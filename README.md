@@ -44,10 +44,26 @@ denv get PORT
 denv keys
 ```
 
+Output format can be changed using the `-o` flag (default: `text`):
+
+```bash
+# JSON output
+denv -o json keys
+# Output: ["PORT","DB_HOST","API_KEY"]
+```
+
 #### Dump all variables
 
 ```bash
 denv list
+```
+
+Output format can be changed using the `-o` flag (default: `text`):
+
+```bash
+# JSON output
+denv -o json list
+# Output: {"PORT":"8080","DB_HOST":"localhost","API_KEY":"secret"}
 ```
 
 ### Isolate Mode

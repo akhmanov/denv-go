@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -118,5 +120,100 @@ func TestIsolate(t *testing.T) {
 	args := []string{"denv", "--file", envFile, "--isolate"}
 	if err := app.Run(args); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestKeysJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	envFile := filepath.Join(tmpDir, ".env")
+	if err := os.WriteFile(envFile, []byte("FOO=bar\nBAZ=qux"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	app := &cli.App{
+		Flags: []cli.Flag{
+			&cli.StringSliceFlag{Name: "file"},
+			&cli.BoolFlag{Name: "isolate"},
+		},
+		Commands: []*cli.Command{
+			{
+				Name: "keys",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "output",
+						Aliases: []string{"o"},
+						Usage:   "output format (text, json)",
+						Value:   "text",
+					},
+				},
+				Action: runKeys,
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	app.Writer = &buf
+
+	args := []string{"denv", "--file", envFile, "--isolate", "keys", "--output", "json"}
+	if err := app.Run(args); err != nil {
+		t.Fatal(err)
+	}
+
+	var keys []string
+	if err := json.Unmarshal(buf.Bytes(), &keys); err != nil {
+		t.Fatalf("invalid JSON output: %v\nOutput was: %q", err, buf.String())
+	}
+
+	if len(keys) != 2 {
+		t.Fatalf("expected 2 keys, got %d", len(keys))
+	}
+}
+
+func TestListJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	envFile := filepath.Join(tmpDir, ".env")
+	if err := os.WriteFile(envFile, []byte("FOO=bar\nBAZ=qux"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	app := &cli.App{
+		Flags: []cli.Flag{
+			&cli.StringSliceFlag{Name: "file"},
+			&cli.BoolFlag{Name: "isolate"},
+		},
+		Commands: []*cli.Command{
+			{
+				Name: "list",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "output",
+						Aliases: []string{"o"},
+						Usage:   "output format (text, json)",
+						Value:   "text",
+					},
+				},
+				Action: runList,
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	app.Writer = &buf
+
+	args := []string{"denv", "--file", envFile, "--isolate", "list", "--output", "json"}
+	if err := app.Run(args); err != nil {
+		t.Fatal(err)
+	}
+
+	var env map[string]string
+	if err := json.Unmarshal(buf.Bytes(), &env); err != nil {
+		t.Fatalf("invalid JSON output: %v\nOutput was: %q", err, buf.String())
+	}
+
+	if env["FOO"] != "bar" {
+		t.Errorf("expected FOO=bar, got %s", env["FOO"])
+	}
+	if env["BAZ"] != "qux" {
+		t.Errorf("expected BAZ=qux, got %s", env["BAZ"])
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"maps"
 	"os"
@@ -44,13 +45,29 @@ func main() {
 				Action:    runGet,
 			},
 			{
-				Name:   "keys",
-				Usage:  "List all available environment variable keys",
+				Name:  "keys",
+				Usage: "List all available environment variable keys",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "output",
+						Aliases: []string{"o"},
+						Usage:   "output format (text, json)",
+						Value:   "text",
+					},
+				},
 				Action: runKeys,
 			},
 			{
-				Name:   "list",
-				Usage:  "List all environment variables in KEY=VALUE format",
+				Name:  "list",
+				Usage: "List all environment variables in KEY=VALUE format",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "output",
+						Aliases: []string{"o"},
+						Usage:   "output format (text, json)",
+						Value:   "text",
+					},
+				},
 				Action: runList,
 			},
 		},
@@ -160,7 +177,7 @@ func runGet(c *cli.Context) error {
 		return cli.Exit(fmt.Sprintf("key '%s' not found", key), 1)
 	}
 
-	fmt.Println(val)
+	fmt.Fprintln(c.App.Writer, val)
 	return nil
 }
 
@@ -176,8 +193,18 @@ func runKeys(c *cli.Context) error {
 	}
 	sort.Strings(keys)
 
-	for _, k := range keys {
-		fmt.Println(k)
+	output := c.String("output")
+
+	if output == "json" {
+		data, err := json.Marshal(keys)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(c.App.Writer, string(data))
+	} else {
+		for _, k := range keys {
+			fmt.Fprintln(c.App.Writer, k)
+		}
 	}
 
 	return nil
@@ -195,8 +222,18 @@ func runList(c *cli.Context) error {
 	}
 	sort.Strings(keys)
 
-	for _, k := range keys {
-		fmt.Printf("%s=%s\n", k, envMap[k])
+	output := c.String("output")
+
+	if output == "json" {
+		data, err := json.Marshal(envMap)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(c.App.Writer, string(data))
+	} else {
+		for _, k := range keys {
+			fmt.Fprintf(c.App.Writer, "%s=%s\n", k, envMap[k])
+		}
 	}
 
 	return nil
