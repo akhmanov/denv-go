@@ -24,6 +24,11 @@ func main() {
 				Aliases: []string{"f"},
 				Usage:   "path to .env file",
 			},
+			&cli.BoolFlag{
+				Name:    "isolate",
+				Aliases: []string{"i"},
+				Usage:   "ignore system environment variables (load only from .env files)",
+			},
 		},
 		Commands: []*cli.Command{
 			{
@@ -57,14 +62,19 @@ func main() {
 	}
 }
 
-// loadEnv loads environment variables from files and merges them with the system environment.
-// System environment variables are loaded first, then .env files override them in order.
+// loadEnv loads environment variables from files.
+// If isolate is true, it starts with an empty map.
+// Otherwise, it starts with system environment variables.
+// Then .env files override them in order.
 func loadEnv(c *cli.Context) (map[string]string, error) {
 	envMap := make(map[string]string)
-	for _, e := range os.Environ() {
-		pair := strings.SplitN(e, "=", 2)
-		if len(pair) == 2 {
-			envMap[pair[0]] = pair[1]
+
+	if !c.Bool("isolate") {
+		for _, e := range os.Environ() {
+			pair := strings.SplitN(e, "=", 2)
+			if len(pair) == 2 {
+				envMap[pair[0]] = pair[1]
+			}
 		}
 	}
 

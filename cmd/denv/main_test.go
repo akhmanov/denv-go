@@ -10,7 +10,6 @@ import (
 )
 
 func TestLoadEnv(t *testing.T) {
-	// Create temporary .env files
 	tmpDir := t.TempDir()
 	env1 := filepath.Join(tmpDir, ".env1")
 	env2 := filepath.Join(tmpDir, ".env2")
@@ -25,6 +24,7 @@ func TestLoadEnv(t *testing.T) {
 	app := &cli.App{
 		Flags: []cli.Flag{
 			&cli.StringSliceFlag{Name: "file"},
+			&cli.BoolFlag{Name: "isolate"},
 		},
 		Action: func(c *cli.Context) error {
 			envMap, err := loadEnv(c)
@@ -64,6 +64,7 @@ func TestDefaultEnv(t *testing.T) {
 	app := &cli.App{
 		Flags: []cli.Flag{
 			&cli.StringSliceFlag{Name: "file"},
+			&cli.BoolFlag{Name: "isolate"},
 		},
 		Action: func(c *cli.Context) error {
 			envMap, err := loadEnv(c)
@@ -78,6 +79,44 @@ func TestDefaultEnv(t *testing.T) {
 	}
 
 	if err := app.Run([]string{"denv"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestIsolate(t *testing.T) {
+	tmpDir := t.TempDir()
+	envFile := filepath.Join(tmpDir, ".env")
+	if err := os.WriteFile(envFile, []byte("MY_VAR=hello"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	os.Setenv("SYSTEM_VAR", "system")
+	defer os.Unsetenv("SYSTEM_VAR")
+
+	app := &cli.App{
+		Flags: []cli.Flag{
+			&cli.StringSliceFlag{Name: "file"},
+			&cli.BoolFlag{Name: "isolate"},
+		},
+		Action: func(c *cli.Context) error {
+			envMap, err := loadEnv(c)
+			if err != nil {
+				return err
+			}
+
+			if envMap["MY_VAR"] != "hello" {
+				return fmt.Errorf("expected MY_VAR=hello, got %s", envMap["MY_VAR"])
+			}
+
+			if _, ok := envMap["SYSTEM_VAR"]; ok {
+				return fmt.Errorf("expected SYSTEM_VAR to be absent in isolate mode")
+			}
+			return nil
+		},
+	}
+
+	args := []string{"denv", "--file", envFile, "--isolate"}
+	if err := app.Run(args); err != nil {
 		t.Fatal(err)
 	}
 }

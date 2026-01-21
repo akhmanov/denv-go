@@ -50,9 +50,22 @@ denv keys
 denv list
 ```
 
+### Isolate Mode
+
+By default, `denv` includes system environment variables (merging `.env` values on top).
+To ignore the system environment and use **only** variables defined in `.env` files, use the `-i` (or `--isolate`) flag.
+
+```bash
+# Exec command in clean environment (only variables from .env)
+denv -i exec -- ./script.sh
+
+# List only variables defined in .env files (ignoring system vars)
+denv -i list
+```
+
 ## Behavior
 
-1. **System Environment**: `denv` starts with the current system environment (`os.Environ()`).
+1. **System Environment**: `denv` starts with the current system environment (`os.Environ()`). If `-i/--isolate` is used, it starts with an empty environment.
 2. **Overrides**: It loads `.env` files in the order specified. Variables defined in these files override system environment variables and variables from previous files.
 3. **Exit Codes**: The `exec` command propagates the exit code of the executed command.
 4. **Signals**: `exec` forwards system signals (SIGINT, SIGTERM, etc.) to the child process.
