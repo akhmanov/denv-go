@@ -62,7 +62,7 @@ func main() {
 		},
 		Before: func(c *cli.Context) error {
 			if c.App.Metadata == nil {
-				c.App.Metadata = make(map[string]interface{})
+				c.App.Metadata = make(map[string]any)
 			}
 			c.App.Metadata["files"] = &files
 			return nil
