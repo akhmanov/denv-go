@@ -17,7 +17,7 @@ go install github.com/akhmanov/denv-go/cmd/denv@latest
 Run a command with environment variables loaded from `.env` files.
 
 ```bash
-denv exec -- printenv PORT
+denv exec printenv PORT
 ```
 
 By default, `denv` looks for a `.env` file in the current directory.
@@ -27,7 +27,7 @@ By default, `denv` looks for a `.env` file in the current directory.
 You can load multiple files. Values from later files override earlier ones.
 
 ```bash
-denv -f .env -f .env.local exec -- ./server
+denv -f .env -f .env.local exec ./server
 ```
 
 ### Inspect environment
@@ -73,7 +73,7 @@ To ignore the system environment and use **only** variables defined in `.env` fi
 
 ```bash
 # Exec command in clean environment (only variables from .env)
-denv -i exec -- ./script.sh
+denv -i exec ./script.sh
 
 # List only variables defined in .env files (ignoring system vars)
 denv -i list
