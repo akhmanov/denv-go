@@ -31,6 +31,9 @@ func (f *envFileFlag) String() string {
 }
 
 func (f *envFileFlag) Set(value string) error {
+	if value == "" {
+		return nil
+	}
 	*f.files = append(*f.files, EnvFile{Path: value, Optional: f.optional})
 	return nil
 }
