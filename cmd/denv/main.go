@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -15,21 +16,56 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+type EnvFile struct {
+	Path     string
+	Optional bool
+}
+
+type envFileFlag struct {
+	files    *[]EnvFile
+	optional bool
+}
+
+func (f *envFileFlag) String() string {
+	return ""
+}
+
+func (f *envFileFlag) Set(value string) error {
+	*f.files = append(*f.files, EnvFile{Path: value, Optional: f.optional})
+	return nil
+}
+
 func main() {
+	var files []EnvFile
+
 	app := &cli.App{
 		Name:  "denv",
 		Usage: "A simple CLI utility to manage environment variables from .env files",
 		Flags: []cli.Flag{
-			&cli.StringSliceFlag{
+			&cli.GenericFlag{
 				Name:    "file",
 				Aliases: []string{"f"},
 				Usage:   "path to .env file",
+				Value:   &envFileFlag{files: &files, optional: false},
+			},
+			&cli.GenericFlag{
+				Name:    "file-optional",
+				Aliases: []string{"fo"},
+				Usage:   "path to .env file (optional, ignore if missing)",
+				Value:   &envFileFlag{files: &files, optional: true},
 			},
 			&cli.BoolFlag{
 				Name:    "isolate",
 				Aliases: []string{"i"},
 				Usage:   "ignore system environment variables (load only from .env files)",
 			},
+		},
+		Before: func(c *cli.Context) error {
+			if c.App.Metadata == nil {
+				c.App.Metadata = make(map[string]interface{})
+			}
+			c.App.Metadata["files"] = &files
+			return nil
 		},
 		Commands: []*cli.Command{
 			{
@@ -79,10 +115,6 @@ func main() {
 	}
 }
 
-// loadEnv loads environment variables from files.
-// If isolate is true, it starts with an empty map.
-// Otherwise, it starts with system environment variables.
-// Then .env files override them in order.
 func loadEnv(c *cli.Context) (map[string]string, error) {
 	envMap := make(map[string]string)
 
@@ -95,17 +127,20 @@ func loadEnv(c *cli.Context) (map[string]string, error) {
 		}
 	}
 
-	files := c.StringSlice("file")
-	if len(files) == 0 {
-		if _, err := os.Stat(".env"); err == nil {
-			files = []string{".env"}
+	var files []EnvFile
+	if v, ok := c.App.Metadata["files"]; ok {
+		if f, ok := v.(*[]EnvFile); ok {
+			files = *f
 		}
 	}
 
 	for _, file := range files {
-		loaded, err := godotenv.Read(file)
+		loaded, err := godotenv.Read(file.Path)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read %s: %w", file, err)
+			if file.Optional && errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return nil, fmt.Errorf("failed to read %s: %w", file.Path, err)
 		}
 
 		maps.Copy(envMap, loaded)
@@ -125,7 +160,6 @@ func runExec(c *cli.Context) error {
 		return err
 	}
 
-	// Convert map back to []string environment
 	envSlice := make([]string, 0, len(envMap))
 	for k, v := range envMap {
 		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
